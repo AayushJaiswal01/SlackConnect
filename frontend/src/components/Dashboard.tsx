@@ -3,7 +3,7 @@ import React, { useState, useEffect, FormEvent, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = 'https://slackconnect.onrender.com';
 
 interface SlackChannel {
   id: string;
@@ -71,7 +71,7 @@ const Dashboard: React.FC = () => {
       alert(`Message ${isScheduled ? 'scheduled' : 'sent'}!`);
       setMessage('');
       if (isScheduled) setScheduleTime('');
-      fetchData(); // Refetch scheduled messages
+      fetchData(); 
     } catch (err: any) {
         const backendError = err.response?.data?.details || 'The bot may not be in that channel.';
         alert(`Failed to send message: ${backendError}`);
@@ -84,7 +84,7 @@ const Dashboard: React.FC = () => {
     try {
         await axios.delete(`${API_URL}/api/scheduled-messages/${msg.id}`, { data: { channelId: msg.channelId } });
         alert('Message canceled!');
-        fetchData(); // Refresh the list
+        fetchData();
     } catch (err) {
         alert('Failed to cancel message.');
     }
@@ -93,7 +93,6 @@ const Dashboard: React.FC = () => {
   if (status === 'loading') return <div>Loading dashboard, fetching channels...</div>;
   if (status === 'error') return <div style={{ color: 'red' }}>{errorMsg}</div>;
 
-  // THIS IS THE MISSING PART
   return (
     <>
       <form>
