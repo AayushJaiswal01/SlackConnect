@@ -13,12 +13,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 model Token {
-   userId      String @id @default("default_user")
-  accessToken String
+  userId        String  @id @default("default_user")
+  accessToken   String  
+  refreshToken  String  
+  expiresAt     BigInt  
 }
 
 model ScheduledMessage {
-  // ... this model does not need to change
   id        String @id
   channelId String
   postAt    Int

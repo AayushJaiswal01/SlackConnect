@@ -1,13 +1,10 @@
-// src/components/Dashboard.tsx
 
 import React, { useState, useEffect, FormEvent, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-// Using the hardcoded URL as requested
 const API_URL = 'https://slackconnect.onrender.com';
 
-// Interfaces for our data structures
 interface SlackChannel {
   id: string;
   name: string;
@@ -65,7 +62,6 @@ const Dashboard: React.FC = () => {
     e.preventDefault();
     const endpoint = isScheduled ? 'schedule-message' : 'send-message';
     
-    // The payload is now simple, without the 'sendAsUser' flag
     const payload = { 
       channel: selectedChannel, 
       text: message, 

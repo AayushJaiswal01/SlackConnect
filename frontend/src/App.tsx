@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Home from './components/Home.tsx';
 import Dashboard from './components/Dashboard.tsx';
-import './index.css'; // Make sure the CSS is imported
+import './index.css'; 
 
 function App() {
   return (

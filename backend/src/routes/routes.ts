@@ -1,4 +1,4 @@
-// src/routes/api.ts
+//https://slackconnect.onrender.com/
 
 import { Router } from 'express';
 import { WebClient } from '@slack/web-api';
@@ -7,19 +7,17 @@ import { addScheduledMessage, deleteScheduledMessage, getScheduledMessages, getT
 
 const router = Router();
 
-// OAuth Start: Request the correct, simple user scopes
 router.get('/auth/slack', (req, res) => {
   const user_scopes = ['chat:write', 'channels:read'];
-  const redirectUri = 'https://slackconnect.onrender.com/api/auth/slack/callback';
+  const redirectUri = `https://slackconnect.onrender.com/api/auth/slack/callback`;
   
   const authUrl = `https://slack.com/oauth/v2/authorize?client_id=${process.env.SLACK_CLIENT_ID}&user_scope=${user_scopes.join(',')}&redirect_uri=${encodeURIComponent(redirectUri)}`;
   res.redirect(authUrl);
 });
 
-// OAuth Callback: Parse the actual response structure from Slack
-router.get('/auth/slack/callback', async (req, res) => {
+router.get('/auth/slack/callback', async (req, res, next) => {
   const { code } = req.query;
-  const redirectUri = 'https://slackconnect.onrender.com/api/auth/slack/callback';
+  const redirectUri = `https://slackconnect.onrender.com/api/auth/slack/callback`;
 
   try {
     const response = await new WebClient().oauth.v2.access({
@@ -30,32 +28,31 @@ router.get('/auth/slack/callback', async (req, res) => {
     });
 
     if (!response.ok) {
-      throw new Error(`Slack API error: ${response.error}`);
+      throw new Error(`Slack API error during token exchange: ${response.error}`);
     }
 
-    // Based on the logs, the user access token is inside the `authed_user` object.
-    const authedUser = response.authed_user as { access_token?: string; };
+    const accessToken = response.access_token as string;
+    const refreshToken = response.refresh_token as string;
+    const expiresIn = response.expires_in as number;
 
-    if (!authedUser || !authedUser.access_token) {
-      console.error("Could not find access_token in authed_user object:", response);
-      throw new Error("Failed to extract user access token from Slack response.");
+    if (!accessToken || !refreshToken || typeof expiresIn === 'undefined') {
+      console.error("Incomplete token data from Slack. Expected access_token, refresh_token, and expires_in.", response);
+      throw new Error("Failed to retrieve the necessary expiring token data from Slack.");
     }
     
-    // Save the single, long-lived user token.
     await saveTokens({
-      accessToken: authedUser.access_token,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      expiresAt: Date.now() + (expiresIn * 1000),
     });
 
-    // Use the environment variable for the frontend URL for flexibility
     res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
     
   } catch (error) {
-    console.error('Slack OAuth callback failed:', error);
-    res.status(500).send('Authentication failed!');
+    next(error);
   }
 });
 
-// --- All other routes use the simple getValidAccessToken service ---
 
 router.get('/status', async (req, res, next) => {
   try {
@@ -84,6 +81,12 @@ router.post('/send-message', async (req, res, next) => {
 
 router.post('/schedule-message', async (req, res, next) => {
     const { channel, text, post_at } = req.body;
+    const now_in_seconds = Math.floor(Date.now() / 1000);
+    if (post_at < now_in_seconds + 60) {
+      const validationError = new Error('Scheduled time must be at least one minute in the future.');
+      (validationError as any).statusCode = 400; 
+      return next(validationError);
+    }
     try {
         const token = await getValidAccessToken();
         const client = new WebClient(token);
@@ -112,6 +115,5 @@ router.get('/scheduled-messages', async (req, res, next) => {
         res.json(await getScheduledMessages());
     } catch (error) { next(error); }
 });
-
 
 export default router;
