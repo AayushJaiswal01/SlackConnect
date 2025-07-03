@@ -1,5 +1,4 @@
 //https://slackconnect.onrender.com/
-
 import { Router } from 'express';
 import { WebClient } from '@slack/web-api';
 import { getValidAccessToken } from '../services/slack_service';
@@ -7,14 +6,15 @@ import { addScheduledMessage, deleteScheduledMessage, getScheduledMessages, getT
 
 const router = Router();
 
+// OAuth Start
 router.get('/auth/slack', (req, res) => {
   const user_scopes = ['chat:write', 'channels:read'];
   const redirectUri = `https://slackconnect.onrender.com/api/auth/slack/callback`;
-  
   const authUrl = `https://slack.com/oauth/v2/authorize?client_id=${process.env.SLACK_CLIENT_ID}&user_scope=${user_scopes.join(',')}&redirect_uri=${encodeURIComponent(redirectUri)}`;
   res.redirect(authUrl);
 });
 
+// OAuth Callback
 router.get('/auth/slack/callback', async (req, res, next) => {
   const { code } = req.query;
   const redirectUri = `https://slackconnect.onrender.com/api/auth/slack/callback`;
@@ -40,6 +40,7 @@ router.get('/auth/slack/callback', async (req, res, next) => {
       throw new Error("Failed to retrieve the necessary expiring token data from Slack.");
     }
     
+    // This call now provides all the required fields.
     await saveTokens({
       accessToken: accessToken,
       refreshToken: refreshToken,
@@ -53,67 +54,12 @@ router.get('/auth/slack/callback', async (req, res, next) => {
   }
 });
 
-
-router.get('/status', async (req, res, next) => {
-  try {
-    res.json({ connected: !!(await getTokens()) });
-  } catch (error) { next(error); }
-});
-
-router.get('/channels', async (req, res, next) => {
-  try {
-    const token = await getValidAccessToken();
-    const client = new WebClient(token);
-    const result = await client.conversations.list({ types: 'public_channel', limit: 200 });
-    res.json(result.channels);
-  } catch (error) { next(error); }
-});
-
-router.post('/send-message', async (req, res, next) => {
-  const { channel, text } = req.body;
-  try {
-    const token = await getValidAccessToken();
-    const client = new WebClient(token);
-    await client.chat.postMessage({ channel, text });
-    res.json({ success: true });
-  } catch (error) { next(error); }
-});
-
-router.post('/schedule-message', async (req, res, next) => {
-    const { channel, text, post_at } = req.body;
-    const now_in_seconds = Math.floor(Date.now() / 1000);
-    if (post_at < now_in_seconds + 60) {
-      const validationError = new Error('Scheduled time must be at least one minute in the future.');
-      (validationError as any).statusCode = 400; 
-      return next(validationError);
-    }
-    try {
-        const token = await getValidAccessToken();
-        const client = new WebClient(token);
-        const result = await client.chat.scheduleMessage({ channel, text, post_at });
-        await addScheduledMessage({
-            id: result.scheduled_message_id as string,
-            channelId: channel, text, postAt: post_at
-        });
-        res.json({ success: true, message: result });
-    } catch(error) { next(error); }
-});
-
-router.delete('/scheduled-messages/:channelId/:id', async (req, res, next) => {
-    const { id, channelId } = req.params;
-    try {
-        const token = await getValidAccessToken();
-        const client = new WebClient(token);
-        await client.chat.deleteScheduledMessage({ channel: channelId, scheduled_message_id: id });
-        await deleteScheduledMessage(id);
-        res.json({ success: true });
-    } catch (error) { next(error); }
-});
-
-router.get('/scheduled-messages', async (req, res, next) => {
-    try {
-        res.json(await getScheduledMessages());
-    } catch (error) { next(error); }
-});
+// --- All other routes remain unchanged ---
+router.get('/status', async (req, res, next) => { try { res.json({ connected: !!(await getTokens()) }); } catch (error) { next(error); }});
+router.get('/channels', async (req, res, next) => { try { const token = await getValidAccessToken(); const client = new WebClient(token); const result = await client.conversations.list({ types: 'public_channel', limit: 200 }); res.json(result.channels); } catch (error) { next(error); }});
+router.post('/send-message', async (req, res, next) => { const { channel, text } = req.body; try { const token = await getValidAccessToken(); const client = new WebClient(token); await client.chat.postMessage({ channel, text }); res.json({ success: true }); } catch (error) { next(error); }});
+router.post('/schedule-message', async (req, res, next) => { const { channel, text, post_at } = req.body; const now_in_seconds = Math.floor(Date.now() / 1000); if (post_at < now_in_seconds + 60) { const validationError = new Error('Scheduled time must be at least one minute in the future.'); (validationError as any).statusCode = 400; return next(validationError); } try { const token = await getValidAccessToken(); const client = new WebClient(token); const result = await client.chat.scheduleMessage({ channel, text, post_at }); await addScheduledMessage({ id: result.scheduled_message_id as string, channelId: channel, text, postAt: post_at }); res.json({ success: true, message: result }); } catch(error) { next(error); }});
+router.delete('/scheduled-messages/:channelId/:id', async (req, res, next) => { const { id, channelId } = req.params; try { const token = await getValidAccessToken(); const client = new WebClient(token); await client.chat.deleteScheduledMessage({ channel: channelId, scheduled_message_id: id }); await deleteScheduledMessage(id); res.json({ success: true }); } catch (error) { next(error); }});
+router.get('/scheduled-messages', async (req, res, next) => { try { res.json(await getScheduledMessages()); } catch (error) { next(error); }});
 
 export default router;
