@@ -16,10 +16,9 @@ router.get('/auth/slack', (req, res) => {
   res.redirect(authUrl);
 });
 
-// OAuth Callback: The response will now only contain the user's token info
 router.get('/auth/slack/callback', async (req, res) => {
   const { code } = req.query;
-  const redirectUri = `https://slackconnect.onrender.com/api/auth/slack/callback`;
+  const redirectUri = `$https://slackconnect.onrender.com/api/auth/slack/callback`;
 
   try {
     const response = await new WebClient().oauth.v2.access({
@@ -29,31 +28,40 @@ router.get('/auth/slack/callback', async (req, res) => {
       redirect_uri: redirectUri,
     });
 
-    if (!response.ok) throw new Error(`Slack API error: ${response.error}`);
+    if (!response.ok) {
+      throw new Error(`Slack API error: ${response.error}`);
+    }
 
-    // The token info is inside the authed_user object
-    const authedUser = response.authed_user as {
-      access_token?: string;
-      refresh_token?: string;
-      expires_in?: number;
-    };
+    // --- THIS IS THE CORRECTED LOGIC ---
 
-    if (!authedUser.access_token || !authedUser.refresh_token || typeof authedUser.expires_in === 'undefined') {
+    // The user token data is now at the top level of the response object.
+    const accessToken = response.access_token as string;
+    const refreshToken = response.refresh_token as string;
+    const expiresIn = response.expires_in as number;
+
+    // Check that all required fields are present at the top level.
+    if (!accessToken || !refreshToken || typeof expiresIn === 'undefined') {
+      // If anything is missing, log the actual response for debugging.
+      console.error("Incomplete token data from Slack:", response);
       throw new Error('Slack response missing required user token data.');
     }
     
+    // Save the correctly parsed tokens.
     await saveTokens({
-      accessToken: authedUser.access_token,
-      refreshToken: authedUser.refresh_token,
-      expiresAt: Date.now() + (authedUser.expires_in * 1000),
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      expiresAt: Date.now() + (expiresIn * 1000),
     });
 
     res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+    
   } catch (error) {
     console.error('Slack OAuth failed:', error);
     res.status(500).send('Authentication failed!');
   }
 });
+
+// ... rest of the file ...
 
 // All subsequent routes now use the single getValidAccessToken function
 router.get('/channels', async (req, res) => {
