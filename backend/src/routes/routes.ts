@@ -18,7 +18,7 @@ router.get('/auth/slack', (req, res) => {
 
 router.get('/auth/slack/callback', async (req, res) => {
   const { code } = req.query;
-  const redirectUri = `$https://slackconnect.onrender.com/api/auth/slack/callback`;
+  const redirectUri = `https://slackconnect.onrender.com/api/auth/slack/callback`;
 
   try {
     const response = await new WebClient().oauth.v2.access({
