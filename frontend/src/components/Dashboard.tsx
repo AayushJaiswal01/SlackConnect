@@ -83,8 +83,7 @@ const Dashboard: React.FC = () => {
     if (!window.confirm('Are you sure you want to cancel this scheduled message?')) return;
     const originalScheduledMessages = [...scheduled];
 
-    // ----> THE OPTIMISTIC FIX <----
-    // Immediately remove the message from the local state to update the UI instantly.
+   
     setScheduled(currentMessages => currentMessages.filter(m => m.id !== msg.id));
   
     try {
@@ -93,7 +92,7 @@ const Dashboard: React.FC = () => {
         fetchData();
     } catch (err) {
         alert('Failed to cancel message.');
-        setScheduled(originalScheduledMessages); // Revert the change
+        //setScheduled(originalScheduledMessages); 
         console.error(err);
     }
   };
