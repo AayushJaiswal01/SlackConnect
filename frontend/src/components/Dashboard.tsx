@@ -87,7 +87,7 @@ const Dashboard: React.FC = () => {
     setScheduled(currentMessages => currentMessages.filter(m => m.id !== msg.id));
   
     try {
-      //  await axios.delete(`${API_URL}/api/scheduled-messages/${msg.id}`, { data: { channelId: msg.channelId } });
+     await axios.delete(`${API_URL}/api/scheduled-messages/${msg.id}`, { data: { channelId: msg.channelId } });
         alert('Message canceled!');
         fetchData();
     } catch (err) {
