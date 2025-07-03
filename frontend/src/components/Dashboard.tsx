@@ -81,12 +81,20 @@ const Dashboard: React.FC = () => {
 
   const handleCancel = async (msg: ScheduledMessage) => {
     if (!window.confirm('Are you sure you want to cancel this scheduled message?')) return;
+    const originalScheduledMessages = [...scheduled];
+
+    // ----> THE OPTIMISTIC FIX <----
+    // Immediately remove the message from the local state to update the UI instantly.
+    setScheduled(currentMessages => currentMessages.filter(m => m.id !== msg.id));
+  
     try {
         await axios.delete(`${API_URL}/api/scheduled-messages/${msg.id}`, { data: { channelId: msg.channelId } });
         alert('Message canceled!');
         fetchData();
     } catch (err) {
         alert('Failed to cancel message.');
+        setScheduled(originalScheduledMessages); // Revert the change
+        console.error(err);
     }
   };
 
