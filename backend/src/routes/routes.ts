@@ -6,7 +6,6 @@ import { addScheduledMessage, deleteScheduledMessage, getScheduledMessages, getT
 
 const router = Router();
 
-// OAuth Start
 router.get('/auth/slack', (req, res) => {
   const user_scopes = ['chat:write', 'channels:read'];
   const redirectUri = `https://slackconnect.onrender.com/api/auth/slack/callback`;
@@ -14,47 +13,47 @@ router.get('/auth/slack', (req, res) => {
   res.redirect(authUrl);
 });
 
-// OAuth Callback
 router.get('/auth/slack/callback', async (req, res, next) => {
   const { code } = req.query;
   const redirectUri = `https://slackconnect.onrender.com/api/auth/slack/callback`;
 
-  try {
-    const response = await new WebClient().oauth.v2.access({
-      code: code as string,
-      client_id: process.env.SLACK_CLIENT_ID!,
-      client_secret: process.env.SLACK_CLIENT_SECRET!,
-      redirect_uri: redirectUri,
-    });
 
-    if (!response.ok) {
-      throw new Error(`Slack API error during token exchange: ${response.error}`);
-    }
+try {
+  const response = await new WebClient().oauth.v2.access({
+    code: code as string,
+    client_id: process.env.SLACK_CLIENT_ID!,
+    client_secret: process.env.SLACK_CLIENT_SECRET!,
+    redirect_uri: redirectUri,
+  });
 
-    const accessToken = response.access_token as string;
-    const refreshToken = response.refresh_token as string;
-    const expiresIn = response.expires_in as number;
-
-    if (!accessToken || !refreshToken || typeof expiresIn === 'undefined') {
-      console.error("Incomplete token data from Slack. Expected access_token, refresh_token, and expires_in.", response);
-      throw new Error("Failed to retrieve the necessary expiring token data from Slack.");
-    }
-    
-    // This call now provides all the required fields.
-    await saveTokens({
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-      expiresAt: Date.now() + (expiresIn * 1000),
-    });
-
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
-    
-  } catch (error) {
-    next(error);
+  if (!response.ok) {
+    throw new Error(`Slack API error during token exchange: ${response.error}`);
   }
-});
 
-// --- All other routes remain unchanged ---
+
+  const authedUser = response.authed_user as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+  };
+
+  if (!authedUser || !authedUser.access_token || !authedUser.refresh_token || typeof authedUser.expires_in === 'undefined') {
+    console.error("Incomplete token data from Slack. The 'authed_user' object did not contain the expected tokens.", response);
+    throw new Error("Failed to retrieve the necessary user token, refresh token, and expiration data from Slack.");
+  }
+  
+  await saveTokens({
+    accessToken: authedUser.access_token,
+    refreshToken: authedUser.refresh_token,
+    expiresAt: Date.now() + (authedUser.expires_in * 1000),
+  });
+
+  res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+  
+} catch (error) {
+  next(error);
+}});
+
 router.get('/status', async (req, res, next) => { try { res.json({ connected: !!(await getTokens()) }); } catch (error) { next(error); }});
 router.get('/channels', async (req, res, next) => { try { const token = await getValidAccessToken(); const client = new WebClient(token); const result = await client.conversations.list({ types: 'public_channel', limit: 200 }); res.json(result.channels); } catch (error) { next(error); }});
 router.post('/send-message', async (req, res, next) => { const { channel, text } = req.body; try { const token = await getValidAccessToken(); const client = new WebClient(token); await client.chat.postMessage({ channel, text }); res.json({ success: true }); } catch (error) { next(error); }});
