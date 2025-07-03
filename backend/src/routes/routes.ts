@@ -91,20 +91,20 @@ router.get('/scheduled-messages', async (req, res) => {
     }
 });
 
-router.delete('/scheduled-messages/:id', async (req, res) => {
-    const { id } = req.params;
-    const { channelId } = req.body; // channelId is required by Slack's API
-    try {
-        const client = await getSlackClient();
-        await client.chat.deleteScheduledMessage({
-            channel: channelId,
-            scheduled_message_id: id,
-        });
-        await deleteScheduledMessage(id);
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: (error as Error).message });
-    }
-});
-
+router.delete('/scheduled-messages/:channelId/:id', async (req, res) => {
+  const { id, channelId } = req.params; // Read BOTH from URL params
+  try {
+      const client = await getSlackClient();
+      await client.chat.deleteScheduledMessage({
+          channel: channelId,
+          scheduled_message_id: id,
+      });
+      await deleteScheduledMessage(id);
+      res.json({ success: true });
+  } catch (error) {
+      // This is where the global error handler will catch the error
+      // and log it on Render.
+      throw error; // Re-throw the error to be caught by the global handler
+  }
+})
 export default router;

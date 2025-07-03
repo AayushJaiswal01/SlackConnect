@@ -81,21 +81,18 @@ const Dashboard: React.FC = () => {
 
   const handleCancel = async (msg: ScheduledMessage) => {
     if (!window.confirm('Are you sure you want to cancel this scheduled message?')) return;
-    const originalScheduledMessages = [...scheduled];
-
-   
-    setScheduled(currentMessages => currentMessages.filter(m => m.id !== msg.id));
-  
     try {
-     await axios.delete(`${API_URL}/api/scheduled-messages/${msg.id}`, { data: { channelId: msg.channelId } });
-        alert('Message canceled!');
-        fetchData();
-    } catch (err) {
-        alert('Failed to cancel message.');
-        //setScheduled(originalScheduledMessages); 
-        console.error(err);
+      // Construct the new URL with both IDs
+      await axios.delete(`${API_URL}/api/scheduled-messages/${msg.channelId}/${msg.id}`);
+      
+      alert('Message canceled!');
+      fetchData(); 
+    } catch (err: any) {
+      const backendError = err.response?.data?.details || 'An unknown error occurred.';
+      alert(`Failed to cancel message: ${backendError}`);
+      console.error(err);
     }
-  };
+  }
 
   if (status === 'loading') return <div>Loading dashboard, fetching channels...</div>;
   if (status === 'error') return <div style={{ color: 'red' }}>{errorMsg}</div>;
