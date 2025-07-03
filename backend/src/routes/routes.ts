@@ -2,8 +2,8 @@
 
 import { Router } from 'express';
 import { WebClient } from '@slack/web-api';
-import { getValidUserAccessToken, getBotAccessToken } from '../services/slack_service.ts';
-import { addScheduledMessage, deleteScheduledMessage, getScheduledMessages, getTokens, saveTokens } from '../db/database.ts';
+import { getValidUserAccessToken, getBotAccessToken } from '../services/slack_service';
+import { addScheduledMessage, deleteScheduledMessage, getScheduledMessages, getTokens, saveTokens } from '../db/database';
 
 const router = Router();
 
@@ -59,7 +59,10 @@ router.get('/auth/slack/callback', async (req, res) => {
 });
 
 // Get Status: No change needed, but good to have
-router.get('/status', async (req, res) => res.json({ connected: !!(await getTokens()) }));
+router.get('/status', async (req, res) => {
+  const tokens = await getTokens();
+  res.json({ connected: !!tokens });
+});
 
 // Get Channels: Use the bot token as it has channel reading permissions
 router.get('/channels', async (req, res) => {
