@@ -9,7 +9,6 @@ const Home: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if already connected on page load
     axios.get(`${API_URL}/api/status`).then(response => {
       if (response.data.connected) {
         navigate('/dashboard');

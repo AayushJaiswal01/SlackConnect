@@ -1,35 +1,43 @@
+// src/db/database.ts
 
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const MOCK_USER_ID = 'default_user';
 
-export interface TokenRecord {
-  accessToken: string;
+// Interface for the full token data structure used in our app
+export interface FullTokenRecord {
+  botAccessToken: string;
+  userAccessToken: string;
+  refreshToken: string;
+  expiresAt: number; // Stored as a number (milliseconds) in our app logic
 }
 
-export async function saveTokens(data: TokenRecord) {
+// Function to save the complete token object to the database
+export async function saveTokens(data: FullTokenRecord) {
   await prisma.token.upsert({
     where: { userId: MOCK_USER_ID },
-    update: { accessToken: data.accessToken },
-    create: { userId: MOCK_USER_ID, accessToken: data.accessToken },
+    update: { ...data, expiresAt: BigInt(data.expiresAt) }, // Convert number to BigInt for DB
+    create: { userId: MOCK_USER_ID, ...data, expiresAt: BigInt(data.expiresAt) },
   });
 }
 
-export async function getTokens(): Promise<TokenRecord | null> {
+// Function to retrieve the complete token object from the database
+export async function getTokens(): Promise<(FullTokenRecord & { userId: string }) | null> {
   const tokenFromDb = await prisma.token.findUnique({
     where: { userId: MOCK_USER_ID },
   });
 
-
-  if (tokenFromDb) {
-    return { accessToken: tokenFromDb.accessToken };
+  if (!tokenFromDb) {
+    return null;
   }
 
-
-  return null;
+  // Convert the BigInt 'expiresAt' from the DB back to a number for app logic
+  return { ...tokenFromDb, expiresAt: Number(tokenFromDb.expiresAt) };
 }
 
+
+// --- Scheduled Message Management (No changes needed for these functions) ---
 export interface ScheduledMessageRecord { id: string; channelId: string; postAt: number; text: string; }
 export async function addScheduledMessage(msg: ScheduledMessageRecord) { await prisma.scheduledMessage.create({ data: msg }); }
 export async function getScheduledMessages(): Promise<ScheduledMessageRecord[]> { return await prisma.scheduledMessage.findMany({ orderBy: { postAt: 'asc' } }); }

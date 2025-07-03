@@ -13,8 +13,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 model Token {
-  userId      String @id @default("default_user")
-  accessToken String
+  userId           String  @id @default("default_user")
+  botAccessToken   String  // We'll rename this for clarity
+  userAccessToken  String
+  refreshToken     String
+  expiresAt        BigInt
 }
 
 model ScheduledMessage {

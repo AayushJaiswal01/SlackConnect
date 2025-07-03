@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect, FormEvent, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
+// Using the hardcoded URL as requested
 const API_URL = 'https://slackconnect.onrender.com';
 
+// Interfaces for our data structures
 interface SlackChannel {
   id: string;
   name: string;
@@ -18,6 +19,7 @@ interface ScheduledMessage {
 }
 
 const Dashboard: React.FC = () => {
+  // State variables for UI and data
   const [channels, setChannels] = useState<SlackChannel[]>([]);
   const [scheduled, setScheduled] = useState<ScheduledMessage[]>([]);
   const [selectedChannel, setSelectedChannel] = useState('');
@@ -25,8 +27,11 @@ const Dashboard: React.FC = () => {
   const [scheduleTime, setScheduleTime] = useState('');
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
+  const [sendAsUser, setSendAsUser] = useState(false); // State for the "Send as User" toggle
+  
   const navigate = useNavigate();
 
+  // Fetches initial data (channels and scheduled messages) from the backend
   const fetchData = useCallback(async () => {
     try {
       if (status !== 'ready') {
@@ -52,51 +57,61 @@ const Dashboard: React.FC = () => {
       setScheduled(schedRes.data);
       setStatus('ready');
     } catch (err) {
-      setErrorMsg('Failed to fetch data. Your token might be invalid. Try reconnecting.');
+      setErrorMsg('Failed to fetch data. Your token might be invalid. Please re-authenticate.');
       setStatus('error');
     }
   }, [selectedChannel, status]); 
 
+  // Run fetchData once when the component mounts
   useEffect(() => {
     fetchData();
   }, []); 
 
+  // Handles both immediate and scheduled message submissions
   const handleSubmit = async (e: FormEvent, isScheduled: boolean) => {
     e.preventDefault();
     const endpoint = isScheduled ? 'schedule-message' : 'send-message';
-    const payload = { channel: selectedChannel, text: message, post_at: isScheduled ? Math.floor(new Date(scheduleTime).getTime() / 1000) : undefined };
+    
+    // The payload now includes the 'sendAsUser' flag from our state
+    const payload = { 
+      channel: selectedChannel, 
+      text: message, 
+      sendAsUser: sendAsUser, 
+      post_at: isScheduled ? Math.floor(new Date(scheduleTime).getTime() / 1000) : undefined 
+    };
     
     try {
       await axios.post(`${API_URL}/api/${endpoint}`, payload);
       alert(`Message ${isScheduled ? 'scheduled' : 'sent'}!`);
       setMessage('');
       if (isScheduled) setScheduleTime('');
-      fetchData(); 
+      fetchData(); // Refetch data to update the UI
     } catch (err: any) {
-        const backendError = err.response?.data?.details || 'The bot may not be in that channel.';
+        const backendError = err.response?.data?.details || 'An unknown error occurred.';
         alert(`Failed to send message: ${backendError}`);
         console.error(err);
     }
   };
 
+  // Handles the cancellation of a scheduled message
   const handleCancel = async (msg: ScheduledMessage) => {
     if (!window.confirm('Are you sure you want to cancel this scheduled message?')) return;
     try {
-      // Construct the new URL with both IDs
       await axios.delete(`${API_URL}/api/scheduled-messages/${msg.channelId}/${msg.id}`);
-      
       alert('Message canceled!');
-      fetchData(); 
+      fetchData(); // Refetch data to remove the canceled message from the list
     } catch (err: any) {
       const backendError = err.response?.data?.details || 'An unknown error occurred.';
       alert(`Failed to cancel message: ${backendError}`);
       console.error(err);
     }
-  }
+  };
 
-  if (status === 'loading') return <div style={{ textAlign: 'center', color: '#6b7280' }}>Loading dashboard, fetching channels...</div>;
-  if (status === 'error') return <div style={{ textAlign: 'center', color: '#ef4444', fontWeight: 600, padding: '1rem', backgroundColor: '#fee2e2', borderRadius: '6px' }}>{errorMsg}</div>;
+  // Render loading and error states
+  if (status === 'loading') return <div style={{ textAlign: 'center', color: '#6b7280' }}>Loading dashboard...</div>;
+  if (status === 'error') return <div style={{ color: 'red', fontWeight: 600, padding: '1rem', backgroundColor: '#fee2e2', borderRadius: '6px' }}>{errorMsg}</div>;
 
+  // Render the main dashboard UI
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* Message Composer Section */}
@@ -115,9 +130,23 @@ const Dashboard: React.FC = () => {
           <textarea id="message" value={message} onChange={e => setMessage(e.target.value)} placeholder="Type your message..." rows={5} />
         </div>
         
+        {/* The "Send as User" toggle switch */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', background: '#f9fafb', borderRadius: '6px' }}>
+          <input 
+            type="checkbox" 
+            id="sendAsUserToggle"
+            style={{ width: 'auto' }} // Override the global input style for checkboxes
+            checked={sendAsUser} 
+            onChange={(e) => setSendAsUser(e.target.checked)} 
+          />
+          <label htmlFor="sendAsUserToggle" style={{ fontWeight: 500, color: '#4b5563', cursor: 'pointer' }}>
+            Send as me (User)
+          </label>
+        </div>
+        
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ flexGrow: 1 }}>
-            <label htmlFor="scheduleTime" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#4b5563' }}>Schedule Time (Optional)</label>
+            <label htmlFor="scheduleTime" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#4b5563' }}>Schedule Time</label>
             <input id="scheduleTime" type="datetime-local" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} />
           </div>
           <button type="submit" onClick={(e) => handleSubmit(e, true)} disabled={!message || !selectedChannel || !scheduleTime} style={{ backgroundColor: '#4f46e5', color: 'white', alignSelf: 'flex-end' }}>Schedule</button>
@@ -126,9 +155,8 @@ const Dashboard: React.FC = () => {
         <button type="submit" onClick={(e) => handleSubmit(e, false)} disabled={!message || !selectedChannel} style={{ backgroundColor: '#1f2937', color: 'white', width: '100%' }}>Send Now</button>
       </form>
 
-      <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb' }}/>
-
       {/* Scheduled Messages Section */}
+      <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb' }}/>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#374151', margin: 0 }}>Scheduled Messages</h2>
         
