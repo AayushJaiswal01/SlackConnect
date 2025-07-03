@@ -76,7 +76,6 @@ const Dashboard: React.FC = () => {
     const payload = { 
       channel: selectedChannel, 
       text: message, 
-      sendAsUser: sendAsUser, 
       post_at: isScheduled ? Math.floor(new Date(scheduleTime).getTime() / 1000) : undefined 
     };
     

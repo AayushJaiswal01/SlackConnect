@@ -1,24 +1,15 @@
 // src/services/slack.service.ts
-
 import { WebClient } from '@slack/web-api';
-import { getTokens, saveTokens, FullTokenRecord } from '../db/database';
+import { getTokens, saveTokens, UserTokenRecord } from '../db/database';
 import axios from 'axios';
 
-/**
- * Gets a valid (non-expired) user access token.
- * If the token is expired, it uses the refresh token to get a new one and saves it.
- * @returns {Promise<string>} A valid user access token.
- */
-export async function getValidUserAccessToken(): Promise<string> {
+// The function name is now generic, as it's the only token we care about
+export async function getValidAccessToken(): Promise<string> {
   let tokens = await getTokens();
-  if (!tokens) {
-    throw new Error('No tokens found. Please authenticate first.');
-  }
+  if (!tokens) throw new Error('No tokens found. Please authenticate.');
 
-  // Check if the user access token is expired (with a 60-second buffer for safety)
   if (tokens.expiresAt < Date.now() - 60000) {
-    console.log('User access token has expired. Refreshing now...');
-    
+    console.log('Access token expired, refreshing...');
     try {
       const response = await axios.post('https://slack.com/api/oauth.v2.access', null, {
         params: {
@@ -29,42 +20,20 @@ export async function getValidUserAccessToken(): Promise<string> {
         },
       });
 
-      if (!response.data.ok) {
-        throw new Error(`Error refreshing token: ${response.data.error}`);
-      }
+      if (!response.data.ok) throw new Error(`Error refreshing token: ${response.data.error}`);
 
-      // Prepare the full new token record for saving
-      const newTokens: FullTokenRecord = {
-        botAccessToken: tokens.botAccessToken, // Bot token remains the same
-        userAccessToken: response.data.access_token,
-        refreshToken: response.data.refresh_token, // Slack provides a new refresh token
+      const newTokens: UserTokenRecord = {
+        accessToken: response.data.access_token,
+        refreshToken: response.data.refresh_token,
         expiresAt: Date.now() + (response.data.expires_in * 1000),
       };
-
       await saveTokens(newTokens);
       console.log('Tokens refreshed and saved successfully.');
-      return newTokens.userAccessToken;
-
+      return newTokens.accessToken;
     } catch (error) {
-      console.error('Fatal error during token refresh:', error);
-      // If refresh fails, the user must re-authenticate.
-      throw new Error('Could not refresh the Slack token. Please try re-authenticating.');
+      console.error('Failed to refresh Slack token:', error);
+      throw new Error('Could not refresh Slack token. Please re-authenticate.');
     }
   }
-
-  // If token is not expired, just return the one from the database
-  return tokens.userAccessToken;
-}
-
-
-/**
- * A simple helper to get the long-lived bot access token.
- * @returns {Promise<string>} The bot access token.
- */
-export async function getBotAccessToken(): Promise<string> {
-    const tokens = await getTokens();
-    if (!tokens) {
-      throw new Error('No tokens found. Please authenticate first.');
-    }
-    return tokens.botAccessToken;
+  return tokens.accessToken;
 }
