@@ -1,46 +1,95 @@
-# Getting Started with Create React App
+# Slack Connect Application
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Slack Connect is a full-stack web application designed to connect to a Slack workspace, send messages immediately on behalf of a user, and schedule messages for future delivery. This project demonstrates skills in Node.js (TypeScript), React, database management with Prisma, and secure integration with third-party APIs using OAuth 2.0, including a complete refresh token implementation for continuous service.
 
-## Available Scripts
+## Live Application
 
-In the project directory, you can run:
+*   **Frontend:** [https://slack-connect-1.onrender.com](https://slack-connect-frontend.onrender.com)
+*   **Backend:** [https://slack-connect.onrender.com](https://slack-connect-backend.onrender.com)
 
-### `npm start`
+## Core Features
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+*   **Secure User-Based Connection:** Implements the Slack OAuth 2.0 flow to securely connect and perform actions on behalf of the authorizing user.
+*   **Automated Token Refresh:** Features a complete refresh token lifecycle. The application automatically detects expired access tokens and uses a stored refresh token to obtain a new one from Slack without requiring any user re-authentication.
+*   **Immediate & Scheduled Messaging:** A user-friendly interface to compose messages and send them instantly or schedule them for a future date and time.
+*   **Scheduled Message Management:** A dashboard to view and cancel all pending scheduled messages before they are sent.
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Technology Stack
 
-### `npm test`
+*   **Backend:** Node.js, Express.js, TypeScript
+*   **Frontend:** React, TypeScript, Axios
+*   **Database ORM:** Prisma
+*   **Database:** PostgreSQL (Cloud-hosted on Neon)
+*   **Deployment:** Render (for both frontend and backend services)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## Setup and Installation
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Follow these instructions to set up and run the project locally.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Prerequisites
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+*   Node.js (v18 or later) & npm
+*   A Slack workspace with permissions to install apps
+*   A free [Neon](https://neon.tech/) account for the PostgreSQL database
+*   `ngrok` for exposing your local server during the initial OAuth setup
 
-### `npm run eject`
+### 1. Slack App Configuration
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+1.  Create a new Slack App at [api.slack.com/apps](https://api.slack.com/apps).
+2.  Navigate to the **"OAuth & Permissions"** page.
+3.  Under **"User Token Scopes"**, add the following scopes:
+    *   `chat:write`
+    *   `channels:read`
+4.  Scroll down to the **"Token Rotation"** section and turn the feature **ON**. This is required to enable the refresh token flow.
+5.  Note your **Client ID** and **Client Secret** from the "Basic Information" page.
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 2. Backend Setup
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+1.  Navigate to the `backend` directory: `cd backend`
+2.  Install dependencies: `npm install`
+3.  Create a `.env` file in the `backend` directory and add the following variables:
+    ```
+    DATABASE_URL="postgresql://user:password@host/dbname?sslmode=require"
+    SLACK_CLIENT_ID=your_client_id_here
+    SLACK_CLIENT_SECRET=your_client_secret_here
+    FRONTEND_URL=http://localhost:3000
+    BACKEND_PUBLIC_URL=https://your-ngrok-url.ngrok-free.app
+    ```
+4.  Apply database migrations: `npx prisma migrate dev`
+5.  Run the backend server: `npm start` (This will run `ts-node` locally).
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+### 3. Frontend Setup
 
-## Learn More
+1.  In a new terminal, navigate to the `frontend` directory: `cd frontend`
+2.  Install dependencies: `npm install`
+3.  Run the frontend server: `npm start`
+4.  The application will be available at `http://localhost:3000`.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### 4. Ngrok and Final Configuration
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+1.  In a third terminal, expose your local backend server: `ngrok http 8080`
+2.  Copy the HTTPS URL from ngrok and set it as the `BACKEND_PUBLIC_URL` in your backend's `.env` file.
+3.  In your Slack App settings, add the ngrok callback URL to **"Redirect URLs"**: `https://your-ngrok-url.ngrok-free.app/api/auth/slack/callback`
+4.  Restart your backend server to load the new environment variable. You are now ready to authenticate.
+
+---
+
+## Architectural Overview
+
+The application is structured as a modern monorepo with separate `frontend` and `backend` services, deployed independently on Render.
+
+*   **OAuth 2.0 & Token Management:** The authentication process is initiated by the user and handled by the backend. By enabling Token Rotation in the Slack App settings, the backend receives an expiring `access_token`, a `refresh_token`, and an `expires_in` duration. These three pieces of data are securely stored in the PostgreSQL database.
+
+*   **Refresh Token Logic:** Before any action that requires talking to Slack (like sending a message), the backend's service layer checks if the stored `access_token` is expired. If it is, the service automatically and silently uses the stored `refresh_token` to request a new set of tokens from Slack. This new set is then saved to the database, ensuring the application can continue to function without ever requiring the user to log in again.
+
+*   **Scheduled Task Handling:** Message scheduling is handled by leveraging Slack's native `chat.scheduleMessage` API. When a user schedules a message, the backend calls this API and stores the `scheduled_message_id` returned by Slack in its own database. To cancel a message, the backend uses this stored ID to call the `chat.deleteScheduledMessage` API, ensuring reliable management without needing a local cron job.
+
+## Challenges and Learnings
+
+A significant challenge and learning opportunity was navigating the different token models offered by Slack's OAuth 2.0 API.
+
+Initially, the standard API flow provided a long-lived, non-expiring token, which did not align with the project's requirement to implement a refresh token cycle. The key insight was discovering that this behavior is controlled by the **"Token Rotation"** setting within the Slack App configuration.
+
+By enabling this feature, the API's response changed to provide the expected short-lived `access_token` and the necessary `refresh_token`. This allowed for the implementation of the full, robust refresh logic as specified. This process highlighted the importance of not only reading API documentation but also understanding an API's configuration options and using logging to adapt to the real-world data structures it provides.
