@@ -13,10 +13,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 model Token {
-  userId        String  @id @default("default_user")
-  accessToken   String  // This will now be the USER token (xoxp-)
-  refreshToken  String
-  expiresAt     BigInt
+   userId      String @id @default("default_user")
+  accessToken String
 }
 
 model ScheduledMessage {

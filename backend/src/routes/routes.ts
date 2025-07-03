@@ -1,29 +1,25 @@
-// src/routes/api.ts   
-// backend/src/routes/api.ts (Corrected and Final Version)
+// src/routes/api.ts
 
 import { Router } from 'express';
 import { WebClient } from '@slack/web-api';
-// FIX #1: Corrected the import path from 'slack_service' to 'slack.service'
-import { getValidAccessToken } from '../services/slack_service'; 
+import { getValidAccessToken } from '../services/slack_service';
 import { addScheduledMessage, deleteScheduledMessage, getScheduledMessages, getTokens, saveTokens } from '../db/database';
 
 const router = Router();
 
-// OAuth Start: Only request user scopes
+// OAuth Start: Request the correct, simple user scopes
 router.get('/auth/slack', (req, res) => {
   const user_scopes = ['chat:write', 'channels:read'];
-  // Use the environment variable for robustness
-  const redirectUri = `https://slackconnect.onrender.com/api/auth/slack/callback`;
+  const redirectUri = 'https://slackconnect.onrender.com/api/auth/slack/callback';
   
   const authUrl = `https://slack.com/oauth/v2/authorize?client_id=${process.env.SLACK_CLIENT_ID}&user_scope=${user_scopes.join(',')}&redirect_uri=${encodeURIComponent(redirectUri)}`;
   res.redirect(authUrl);
 });
 
-// OAuth Callback
+// OAuth Callback: Parse the actual response structure from Slack
 router.get('/auth/slack/callback', async (req, res) => {
   const { code } = req.query;
-  // Use the environment variable here as well for consistency
-  const redirectUri = `https://slackconnect.onrender.com/api/auth/slack/callback`;
+  const redirectUri = 'https://slackconnect.onrender.com/api/auth/slack/callback';
 
   try {
     const response = await new WebClient().oauth.v2.access({
@@ -33,34 +29,24 @@ router.get('/auth/slack/callback', async (req, res) => {
       redirect_uri: redirectUri,
     });
 
-    // Add this log to see the raw response, it's the best debugging tool
-    console.log("RAW SLACK OAUTH RESPONSE:", JSON.stringify(response, null, 2));
-
     if (!response.ok) {
-      // If the request itself failed, throw with the specific error from Slack
-      throw new Error(`Slack API error during token exchange: ${response.error}`);
+      throw new Error(`Slack API error: ${response.error}`);
     }
 
-    // The user token data is inside the `authed_user` object for user scopes
-    const authedUser = response.authed_user as {
-      access_token?: string;
-      refresh_token?: string;
-      expires_in?: number;
-    };
+    // Based on the logs, the user access token is inside the `authed_user` object.
+    const authedUser = response.authed_user as { access_token?: string; };
 
-    // FIX #2: Correctly check the authed_user object and throw a more descriptive error
-    if (!authedUser || !authedUser.access_token || !authedUser.refresh_token || typeof authedUser.expires_in === 'undefined') {
-      console.error("Incomplete token data from Slack. The 'authed_user' object did not contain the expected tokens.");
-      throw new Error("Could not retrieve the necessary user token, refresh token, and expiration data from Slack.");
+    if (!authedUser || !authedUser.access_token) {
+      console.error("Could not find access_token in authed_user object:", response);
+      throw new Error("Failed to extract user access token from Slack response.");
     }
     
-    // Save the correctly parsed tokens
+    // Save the single, long-lived user token.
     await saveTokens({
       accessToken: authedUser.access_token,
-      refreshToken: authedUser.refresh_token,
-      expiresAt: Date.now() + (authedUser.expires_in * 1000),
     });
 
+    // Use the environment variable for the frontend URL for flexibility
     res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
     
   } catch (error) {
@@ -69,15 +55,21 @@ router.get('/auth/slack/callback', async (req, res) => {
   }
 });
 
+// --- All other routes use the simple getValidAccessToken service ---
 
-// All subsequent routes use the single getValidAccessToken function
+router.get('/status', async (req, res, next) => {
+  try {
+    res.json({ connected: !!(await getTokens()) });
+  } catch (error) { next(error); }
+});
+
 router.get('/channels', async (req, res, next) => {
   try {
     const token = await getValidAccessToken();
     const client = new WebClient(token);
     const result = await client.conversations.list({ types: 'public_channel', limit: 200 });
     res.json(result.channels);
-  } catch (error) { next(error); } // Pass errors to the global handler
+  } catch (error) { next(error); }
 });
 
 router.post('/send-message', async (req, res, next) => {
@@ -119,15 +111,6 @@ router.get('/scheduled-messages', async (req, res, next) => {
     try {
         res.json(await getScheduledMessages());
     } catch (error) { next(error); }
-});
-
-// Added for completeness
-router.get('/status', async (req, res, next) => {
-    try {
-        res.json({ connected: !!(await getTokens()) });
-    } catch (error) {
-        next(error);
-    }
 });
 
 
