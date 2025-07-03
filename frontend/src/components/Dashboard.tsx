@@ -94,61 +94,62 @@ const Dashboard: React.FC = () => {
     }
   }
 
-  if (status === 'loading') return <div>Loading dashboard, fetching channels...</div>;
-  if (status === 'error') return <div style={{ color: 'red' }}>{errorMsg}</div>;
+  if (status === 'loading') return <div style={{ textAlign: 'center', color: '#6b7280' }}>Loading dashboard, fetching channels...</div>;
+  if (status === 'error') return <div style={{ textAlign: 'center', color: '#ef4444', fontWeight: 600, padding: '1rem', backgroundColor: '#fee2e2', borderRadius: '6px' }}>{errorMsg}</div>;
 
   return (
-    <>
-      <form>
-        <h2>Message Composer</h2>
-        <div style={{ marginBottom: 10 }}>
-          <label>Channel: </label>
-          <select value={selectedChannel} onChange={e => setSelectedChannel(e.target.value)}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      {/* Message Composer Section */}
+      <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#374151', margin: 0 }}>Message Composer</h2>
+        
+        <div>
+          <label htmlFor="channel" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#4b5563' }}>Channel</label>
+          <select id="channel" value={selectedChannel} onChange={e => setSelectedChannel(e.target.value)}>
             {channels.map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
           </select>
         </div>
-        <div style={{ marginBottom: 10 }}>
-          <textarea 
-            value={message} 
-            onChange={e => setMessage(e.target.value)}
-            placeholder="Type your message..."
-            rows={5}
-            style={{ width: '300px' }}
-          />
-        </div>
+        
         <div>
-          <button type="submit" onClick={(e) => handleSubmit(e, false)} disabled={!message || !selectedChannel}>Send Now</button>
+          <label htmlFor="message" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#4b5563' }}>Message</label>
+          <textarea id="message" value={message} onChange={e => setMessage(e.target.value)} placeholder="Type your message..." rows={5} />
         </div>
-        <hr style={{ margin: '20px 0' }}/>
-        <h3>Schedule for Later</h3>
-        <div style={{ marginBottom: 10 }}>
-            <input 
-                type="datetime-local" 
-                value={scheduleTime}
-                onChange={e => setScheduleTime(e.target.value)}
-            />
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ flexGrow: 1 }}>
+            <label htmlFor="scheduleTime" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#4b5563' }}>Schedule Time (Optional)</label>
+            <input id="scheduleTime" type="datetime-local" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} />
+          </div>
+          <button type="submit" onClick={(e) => handleSubmit(e, true)} disabled={!message || !selectedChannel || !scheduleTime} style={{ backgroundColor: '#4f46e5', color: 'white', alignSelf: 'flex-end' }}>Schedule</button>
         </div>
-        <div>
-          <button type="submit" onClick={(e) => handleSubmit(e, true)} disabled={!message || !selectedChannel || !scheduleTime}>Schedule Message</button>
-        </div>
+
+        <button type="submit" onClick={(e) => handleSubmit(e, false)} disabled={!message || !selectedChannel} style={{ backgroundColor: '#1f2937', color: 'white', width: '100%' }}>Send Now</button>
       </form>
 
-      <hr style={{ margin: '20px 0' }}/>
+      <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb' }}/>
 
-      <h2>Scheduled Messages</h2>
-      {scheduled.length === 0 ? <p>No messages scheduled.</p> : (
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {scheduled.map(msg => (
-            <li key={msg.id} style={{ border: '1px solid #ccc', padding: 10, marginBottom: 10 }}>
-              <p><strong>To:</strong> #{channels.find(c => c.id === msg.channelId)?.name || msg.channelId}</p>
-              <p><strong>At:</strong> {new Date(msg.postAt * 1000).toLocaleString()}</p>
-              <p><strong>Message:</strong> {msg.text}</p>
-              <button onClick={() => handleCancel(msg)}>Cancel</button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </>
+      {/* Scheduled Messages Section */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#374151', margin: 0 }}>Scheduled Messages</h2>
+        
+        {scheduled.length === 0 ? <p style={{ color: '#6b7280' }}>No messages scheduled.</p> : (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {scheduled.map(msg => (
+              <li key={msg.id} style={{ backgroundColor: '#f9fafb', padding: '1rem', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 600, color: '#111827' }}>To: #{channels.find(c => c.id === msg.channelId)?.name || msg.channelId}</p>
+                    <p style={{ margin: '0.25rem 0', fontSize: '0.875rem', color: '#6b7280' }}>At: {new Date(msg.postAt * 1000).toLocaleString()}</p>
+                    <p style={{ marginTop: '0.75rem', color: '#374151', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.text}</p>
+                  </div>
+                  <button onClick={() => handleCancel(msg)} style={{ backgroundColor: '#fee2e2', color: '#b91c1c', fontSize: '0.875rem', padding: '6px 12px', flexShrink: 0 }}>Cancel</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 };
 

@@ -24,17 +24,15 @@ const Home: React.FC = () => {
   }
 
   return (
-    <div>
-      <h2>Welcome</h2>
-      <p>Connect your Slack workspace to start sending messages.</p>
-      <a href={`${API_URL}/api/auth/slack`}>
-        <img 
-          alt="Add to Slack" 
-          height="40" 
-          width="139" 
-          src="https://platform.slack-edge.com/img/add_to_slack.png" 
-          srcSet="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" 
-        />
+    <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+      <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#374151', marginBottom: '1rem' }}>
+        Welcome
+      </h2>
+      <p style={{ color: '#4b5563', marginBottom: '1.5rem' }}>
+        Connect your Slack workspace to begin.
+      </p>
+      <a href={`${API_URL}/api/auth/slack`} style={{ display: 'inline-block' }}>
+        <img alt="Add to Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcSet="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" />
       </a>
     </div>
   );
