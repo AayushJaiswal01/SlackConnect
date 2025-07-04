@@ -3,9 +3,8 @@
 Slack Connect is a full-stack web application designed to connect to a Slack workspace, send messages immediately on behalf of a user, and schedule messages for future delivery. This project demonstrates skills in Node.js (TypeScript), React, database management with Prisma, and secure integration with third-party APIs using OAuth 2.0, including a complete refresh token implementation for continuous service.
 
 ## Live Application
-
-*   **Frontend:** [https://slack-connect-1.onrender.com](https://slackconnect-1.onrender.com)
-*   **Backend:** [https://slack-connect.onrender.com](https://slack-connect.onrender.com)
+*   **Frontend:** [https://slackconnect-1.onrender.com](https://slackconnect-1.onrender.com)
+*   **Backend:** [https://slackconnect.onrender.com](https://slackconnect.onrender.com)
 
 ## Core Features
 
