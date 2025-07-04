@@ -4,8 +4,8 @@ Slack Connect is a full-stack web application designed to connect to a Slack wor
 
 ## Live Application
 
-*   **Frontend:** [https://slack-connect-1.onrender.com](https://slack-connect-frontend.onrender.com)
-*   **Backend:** [https://slack-connect.onrender.com](https://slack-connect-backend.onrender.com)
+*   **Frontend:** [https://slack-connect-1.onrender.com](https://slackconnect-1.onrender.com)
+*   **Backend:** [https://slack-connect.onrender.com](https://slack-connect.onrender.com)
 
 ## Core Features
 
